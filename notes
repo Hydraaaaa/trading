@@ -1,0 +1,14 @@
+Timestamps differ between each timeframe, this makes the transition not seamless
+
+Need to anchor the starting point based on timestamp in order to have the different zoom levels align perfectly
+
+It's not just the offset that needs to be in place
+
+The effect gets worse the further right you go
+
+What could cause this?
+
+
+
+Where is the mismatch between offset and total calculated number coming from?
+Why isn't candle count + offset equal to the full amount of candles from the earliest time point?
