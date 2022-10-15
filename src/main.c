@@ -16,22 +16,23 @@ int main()
 
 	const int zoomIndexCount = 4;
 
-	LoadCandleData(&candleData[0], "1w", 10080);
-	LoadCandleData(&candleData[1], "1d", 1440);
-	LoadCandleData(&candleData[2], "4h", 240);
-	LoadCandleData(&candleData[3], "1h", 60);
+	LoadCandleData(&candleData[0], "1mo");
+	LoadCandleData(&candleData[1], "1w");
+	LoadCandleData(&candleData[2], "1d");
+	LoadCandleData(&candleData[3], "4h");
+	LoadCandleData(&candleData[4], "1h");
 
-	int zoomIndex = 1;
+	int zoomIndex = 2;
 	int zoomLevel = 0;
 	float verticalZoomLevel = 0;
 
 	const float SCALE_INCREMENT = 1.05f;
-	const float SCALE_THRESHOLD = 1.0f;
+	const float SCALE_THRESHOLD = 2.5f;
 
-	float initialScale = candleData[zoomIndex].scale / SCALE_THRESHOLD;
+	float initialScale = candleData[zoomIndex].candles[0].scale / (SCALE_THRESHOLD * 2);
 	float scale = initialScale;
 
-	float initialVerticalScale = 500000;
+	float initialVerticalScale = initialScale * 1000;
 	float verticalScale = initialVerticalScale;
 
     SetTargetFPS(100);
@@ -43,10 +44,10 @@ int main()
 	float cameraPosY;
 
 	{
-		float candleWidth = candleData[zoomIndex].scale / scale;
-		int candleCount = candleData[zoomIndex].candleCount - 1;
-		cameraPosX = candleCount * candleWidth - SCREEN_WIDTH;
-		cameraPosY = -(log10(candleData[zoomIndex].candles[candleCount].close) * verticalScale / scale) - SCREEN_HEIGHT / 2.0f;
+		Candle* candle = &candleData[zoomIndex].candles[candleData[zoomIndex].candleCount - 1];
+
+		cameraPosX = (candle->timestamp + candle->scale) / scale - SCREEN_WIDTH;
+		cameraPosY = -(log10(candle->close) * verticalScale / scale) - SCREEN_HEIGHT / 2.0f;
 	}
 
 	// Mouse selection
@@ -84,11 +85,6 @@ int main()
 			if (zoomIndex < zoomIndexCount - 1)
 			{
 				zoomIndex++;
-
-				printf("Candle Count: %i", candleData[zoomIndex].candleCount);
-				printf(" - Candle Scale: %i", candleData[zoomIndex].scale);
-				printf(" - Candle Offset: %f", candleData[zoomIndex].offset);
-				printf(" - Combined: %f\n", (candleData[zoomIndex].candleCount + candleData[zoomIndex].offset) * candleData[zoomIndex].scale);
 			}
 		}
 
@@ -97,11 +93,6 @@ int main()
 			if (zoomIndex > 0)
 			{
 				zoomIndex--;
-
-				printf("Candle Count: %i", candleData[zoomIndex].candleCount);
-				printf(" - Candle Scale: %i", candleData[zoomIndex].scale);
-				printf(" - Candle Offset: %f", candleData[zoomIndex].offset);
-				printf(" - Combined: %f\n", (candleData[zoomIndex].candleCount + candleData[zoomIndex].offset) * candleData[zoomIndex].scale);
 			}
 		}
 
@@ -132,7 +123,7 @@ int main()
 			zoomIndex = 0;
 
 			while (zoomIndex + 1 < zoomIndexCount &&
-			       scale < candleData[zoomIndex + 1].scale / SCALE_THRESHOLD)
+			       scale < candleData[zoomIndex + 1].candles[0].scale / SCALE_THRESHOLD)
 			{
 				zoomIndex++;
 			}
@@ -164,41 +155,56 @@ int main()
 
 		ClearBackground(BLACK);
 
-		float candleWidth = candleData[zoomIndex].scale / scale;
-
-		int startingCandle = cameraPosX / candleWidth - candleData[zoomIndex].offset;
-		int endingCandle = (cameraPosX + SCREEN_WIDTH) / candleWidth + 1 - candleData[zoomIndex].offset;
-
-		if (startingCandle < 0)
-		{
-			startingCandle = 0;
-		}
-
-		if (endingCandle >= candleData[zoomIndex].candleCount)
-		{
-			endingCandle = candleData[zoomIndex].candleCount - 1;
-		}
-
 		DrawRectangle(-cameraPosX, 0, 1, SCREEN_HEIGHT, WHITE);
 
-		// Draw Candles
-		for (int i = startingCandle; i < endingCandle; i++)
-		{
-			float scaledOpen = -(log10(candleData[zoomIndex].candles[i].open) * verticalScale / scale);
-			float scaledClose = -(log10(candleData[zoomIndex].candles[i].close) * verticalScale / scale);
-			float scaledHigh = -(log10(candleData[zoomIndex].candles[i].high) * verticalScale / scale);
-			float scaledLow = -(log10(candleData[zoomIndex].candles[i].low) * verticalScale / scale);
+		float cameraTimestamp = cameraPosX * scale;
+		float cameraEndTimestamp = (cameraPosX + SCREEN_WIDTH) * scale;
 
-			int xPos = (i + candleData[zoomIndex].offset) * candleWidth - cameraPosX;
+		// Draw Candles
+		for (int i = 0; i < candleData[zoomIndex].candleCount; i++)
+		{
+			Candle* candle = &candleData[zoomIndex].candles[i];
+
+			if (candle->timestamp > cameraEndTimestamp)
+			{
+				break;
+			}
+
+			if (candle->timestamp + candle->scale < cameraTimestamp)
+			{
+				continue;
+			}
+
+			int xPos = candle->timestamp / scale - cameraPosX;
+			float candleWidth = candle->scale / scale;
+
+			float scaledOpen = -(log10(candle->open) * verticalScale / scale);
+			float scaledClose = -(log10(candle->close) * verticalScale / scale);
+			float scaledHigh = -(log10(candle->high) * verticalScale / scale);
+			float scaledLow = -(log10(candle->low) * verticalScale / scale);
 
 			if (scaledClose > scaledOpen)
 			{
-				DrawRectangle(xPos, scaledOpen - cameraPosY, candleWidth, scaledClose - scaledOpen, RED);
+				float candleHeight = scaledClose - scaledOpen;
+
+				if (candleHeight < 1)
+				{
+					candleHeight = 1;
+				}
+
+				DrawRectangle(xPos, scaledOpen - cameraPosY, candleWidth, candleHeight, RED);
 				DrawRectangle(xPos + candleWidth / 2 - 0.5f, scaledHigh - cameraPosY, 1, scaledLow - scaledHigh, RED);
 			}
 			else
 			{
-				DrawRectangle(xPos, scaledClose - cameraPosY, candleWidth, scaledOpen - scaledClose, GREEN);
+				float candleHeight = scaledOpen - scaledClose;
+
+				if (candleHeight < 1)
+				{
+					candleHeight = 1;
+				}
+
+				DrawRectangle(xPos, scaledClose - cameraPosY, candleWidth, candleHeight, GREEN);
 				DrawRectangle(xPos + candleWidth / 2 - 0.5f, scaledHigh - cameraPosY, 1, scaledLow - scaledHigh, GREEN);
 			}
 		}
@@ -217,28 +223,25 @@ int main()
 
 		char candleString[50];
 
-		int hoverIndex = (cameraPosX + GetMouseX()) / candleWidth;
+		float mousePosX = (cameraPosX + GetMouseX()) * scale;
+		int mouseIndex = candleData[zoomIndex].candleCount;
 
-		if (hoverIndex < 0)
+		for (int i = 0; i < candleData[zoomIndex].candleCount; i++)
 		{
-			hoverIndex = 0;
+			if (candleData[zoomIndex].candles[i].scale > mousePosX)
+			{
+				mouseIndex = i;
+				break;
+			}
 		}
 
-		if (hoverIndex >= candleData[zoomIndex].candleCount)
-		{
-			hoverIndex = candleData[zoomIndex].candleCount - 1;
-		}
+		Candle candle = candleData[zoomIndex].candles[mouseIndex];
 
-		Candle candle = candleData[zoomIndex].candles[hoverIndex];
-
-		sprintf(candleString, "%i: %i - %i - %i - %i", hoverIndex, (int)candle.open, (int)candle.high, (int)candle.low, (int)candle.close);
+		sprintf(candleString, "%i: %i - %i - %i - %i", mouseIndex, (int)candle.open, (int)candle.high, (int)candle.low, (int)candle.close);
 		DrawText(candleString, 0, 60, 20, RAYWHITE);
 
-		sprintf(candleString, "%i", (int)cameraPosY);
+		sprintf(candleString, "%i, %i", (int)cameraPosX, (int)cameraPosY);
 		DrawText(candleString, 0, 80, 20, RAYWHITE);
-
-		sprintf(candleString, "%i", (int)verticalScale);
-		DrawText(candleString, 0, 100, 20, RAYWHITE);
 
         EndDrawing();
     }

@@ -6,11 +6,12 @@
 
 #include "candle.h"
 
-//const long ORIGIN_TIMESTAMP = 1501545600000;
-const long ORIGIN_TIMESTAMP = 1502668800000;
+const long ORIGIN_TIMESTAMP = 1501545600000;
 
 struct Candle
 {
+	int timestamp;
+	int scale; // Determines the width of the candle, necessary because months don't have a fixed size
 	float open;
 	float high;
 	float low;
@@ -21,54 +22,13 @@ struct CandleData
 {
 	Candle* candles;
 	int candleCount;
-	int scale;
-	float offset;
 };
 
-void LoadCandleData(CandleData* candleData, char* fileName, int scale)
+void LoadCandleData(CandleData* candleData, char* fileName)
 {
-	candleData->scale = scale;
-
 	FILE* file = fopen(fileName, "r");
 
 	int candleCount = 0;
-
-	// Calculate timestamp interval between candles
-	char timestamp1[14];
-	char timestamp2[14];
-
-	for (int i = 0; i < 13; i++)
-	{
-		timestamp1[i] = fgetc(file);
-	}
-
-	timestamp1[13] = '\n';
-
-	char ch = fgetc(file);
-
-	while (ch != '\n')
-	{
-		ch = fgetc(file);
-	}
-
-	for (int i = 0; i < 13; i++)
-	{
-		timestamp2[i] = fgetc(file);
-	}
-
-	timestamp2[13] = '\n';
-
-	long timestamp1int = atol(timestamp1);
-	long timestamp2int = atol(timestamp2);
-
-	int timestampInterval = timestamp2int - timestamp1int;
-
-	printf("\ntimestamp1int %li - ORIGIN_TIMESTAMP %li\n", timestamp1int, ORIGIN_TIMESTAMP);
-
-	candleData->offset = (timestamp1int - ORIGIN_TIMESTAMP) / (float)timestampInterval;
-
-	printf("timestampInterval %i\n", timestampInterval);
-	printf("offset %s %f\n", fileName, candleData->offset);
 
 	rewind(file);
 
@@ -81,8 +41,6 @@ void LoadCandleData(CandleData* candleData, char* fileName, int scale)
 		}
 	}
 
-	printf("Candle Count %s: %i\n", fileName, candleCount);
-
 	candleData->candles = malloc(sizeof(Candle) * candleCount);
 	candleData->candleCount = candleCount;
 
@@ -94,6 +52,8 @@ void LoadCandleData(CandleData* candleData, char* fileName, int scale)
 
 	char* string = malloc(15);
 
+	Candle* candle = &candleData->candles[lineNumber];
+
 	while (!feof(file))
 	{
 		char ch = fgetc(file);
@@ -104,19 +64,13 @@ void LoadCandleData(CandleData* candleData, char* fileName, int scale)
 
 			switch (currentCell)
 			{
-				case 0: if (lineNumber == candleCount - 1)
-						{
-							long tmstmp = atof(string);
-
-							printf("Timestamp: %li, Calculated: %li\n", tmstmp, timestamp1int + (long)timestampInterval * (candleCount - 1));
-						};
-						break; // Open Time
-				case 1: candleData->candles[lineNumber].open = atof(string); break; // Open
-				case 2: candleData->candles[lineNumber].high = atof(string); break; // High
-				case 3: candleData->candles[lineNumber].low = atof(string); break; // Low
-				case 4: candleData->candles[lineNumber].close = atof(string); break; // Close
+				case 0: candle->timestamp = (atol(string) - ORIGIN_TIMESTAMP) / 1000; break; // Open Time
+				case 1: candle->open = atof(string); break; // Open
+				case 2: candle->high = atof(string); break; // High
+				case 3: candle->low = atof(string); break; // Low
+				case 4: candle->close = atof(string); break; // Close
 				case 5: break; // Volume
-				case 6: break; // Close Time
+				case 6: candle->scale = (atol(string) - ORIGIN_TIMESTAMP + 1) / 1000 - candle->timestamp; break; // Close Time
 				case 7: break; // Quote Asset Volume
 				case 8: break; // Number of Trades
 				case 9: break; // Taker buy base asset volume
@@ -131,6 +85,7 @@ void LoadCandleData(CandleData* candleData, char* fileName, int scale)
 		{
 			currentIndex = -1;
 			lineNumber++;
+			candle = &candleData->candles[lineNumber];
 			currentCell = 0;
 		}
 		else
