@@ -9,5 +9,6 @@ typedef struct Candle Candle;
 typedef struct CandleData CandleData;
 
 void LoadCandleData(CandleData* candleData, char* fileName);
+void UnloadCandleData(CandleData* candleData);
 
 #endif

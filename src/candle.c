@@ -96,3 +96,8 @@ void LoadCandleData(CandleData* candleData, char* fileName)
 		currentIndex++;
 	}
 }
+
+void UnloadCandleData(CandleData* candleData)
+{
+	free(candleData->candles);
+}
