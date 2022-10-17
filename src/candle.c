@@ -8,22 +8,6 @@
 
 const long ORIGIN_TIMESTAMP = 1501545600000;
 
-struct Candle
-{
-	int timestamp;
-	int scale; // Determines the width of the candle, necessary because months don't have a fixed size
-	float open;
-	float high;
-	float low;
-	float close;
-};
-
-struct CandleData
-{
-	Candle* candles;
-	int candleCount;
-};
-
 void LoadCandleData(CandleData* candleData, char* fileName)
 {
 	FILE* file = fopen(fileName, "r");

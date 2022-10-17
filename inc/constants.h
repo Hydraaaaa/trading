@@ -1,0 +1,12 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#define SCREEN_WIDTH 1440
+#define SCREEN_HEIGHT 720
+
+#define ZOOM_INDEX_COUNT 5
+
+#define ZOOM_THRESHOLD 3.0f
+#define ZOOM_INCREMENT 1.05f
+
+#endif
