@@ -153,11 +153,73 @@ int main()
 
 		if (IsKeyPressed(KEY_L))
 		{
-			//float price = ToPrice(scaleData, cameraPosY + SCREEN_HEIGHT / 2, logScale);
+			float cameraTop = ToPrice(scaleData, cameraPosY, logScale);
+			float cameraBottom = ToPrice(scaleData, cameraPosY + SCREEN_HEIGHT, logScale);
+
+			float cameraTimestamp = ToTimestamp(scaleData, cameraPosX);
+			float cameraEndTimestamp = ToTimestamp(scaleData, cameraPosX + SCREEN_WIDTH);
+
+			float priceUpper = 0;
+			float priceLower = 10000000;
+
+			// Draw Candles
+			for (int i = 1; i < candleData[zoomIndex].candleCount; i++)
+			{
+				Candle* candle = &candleData[zoomIndex].candles[i];
+
+				if (candle->timestamp > cameraEndTimestamp)
+				{
+					break;
+				}
+
+				if (candle->timestamp + candle->scale < cameraTimestamp)
+				{
+					continue;
+				}
+
+				if (candle->high > priceUpper)
+				{
+					if (candle->high > cameraTop)
+					{
+						priceUpper = cameraTop;
+					}
+					else
+					{
+						priceUpper = candle->high;
+					}
+				}
+
+				if (candle->low < priceLower)
+				{
+					if (candle->low < cameraBottom)
+					{
+						priceLower = cameraBottom;
+					}
+					else
+					{
+						priceLower = candle->low;
+					}
+				}
+			}
+
+			float originalPixelUpper = ToPixelY(scaleData, priceUpper, logScale);
+			float originalPixelLower = ToPixelY(scaleData, priceLower, logScale);
+
+			float pixelOffset = originalPixelUpper - cameraPosY;
 
 			logScale = !logScale;
 
-			//cameraPosY = ToScreenY(scaleData, price, logScale) - SCREEN_HEIGHT / 2;
+			float pixelUpper = ToPixelY(scaleData, priceUpper, logScale);
+			float pixelLower = ToPixelY(scaleData, priceLower, logScale);
+
+			float difference = (pixelLower - pixelUpper) / (originalPixelLower - originalPixelUpper);
+			
+			initialVerticalScale *= difference;
+			scaleData.verticalScale *= difference;
+
+			pixelUpper = ToPixelY(scaleData, priceUpper, logScale);
+
+			cameraPosY = pixelUpper - pixelOffset;
 		}
 
 		// Zooming
@@ -188,7 +250,7 @@ int main()
 			zoomIndex = 0;
 
 			while (zoomIndex + 1 < ZOOM_INDEX_COUNT &&
-			       ToScreenX(scaleData, candleData[zoomIndex + 1].candles[0].scale) > ZOOM_THRESHOLD)
+			       ToPixelX(scaleData, candleData[zoomIndex + 1].candles[0].scale) > ZOOM_THRESHOLD)
 			{
 				zoomIndex++;
 			}
@@ -224,13 +286,13 @@ int main()
 				continue;
 			}
 
-			int xPos = ToScreenX(scaleData, candle->timestamp) - cameraPosX;
-			float candleWidth = ToScreenX(scaleData, candle->scale);
+			int xPos = ToPixelX(scaleData, candle->timestamp) - cameraPosX;
+			float candleWidth = ToPixelX(scaleData, candle->scale);
 
-			float scaledOpen = ToScreenY(scaleData, candle->open, logScale);
-			float scaledClose = ToScreenY(scaleData, candle->close, logScale);
-			float scaledHigh = ToScreenY(scaleData, candle->high, logScale);
-			float scaledLow = ToScreenY(scaleData, candle->low, logScale);
+			float scaledOpen = ToPixelY(scaleData, candle->open, logScale);
+			float scaledClose = ToPixelY(scaleData, candle->close, logScale);
+			float scaledHigh = ToPixelY(scaleData, candle->high, logScale);
+			float scaledLow = ToPixelY(scaleData, candle->low, logScale);
 
 			if (scaledClose > scaledOpen)
 			{
@@ -284,15 +346,14 @@ int main()
 			}
 		}
 		
-		//sprintf(candleString, "%i: %i - %i - %i - %i", hoverIndex, (int)candle.open, (int)candle.high, (int)candle.low, (int)candle.close);
-		sprintf(candleString, "%i", index);
-		DrawText(candleString, 0, 60, 20, RAYWHITE);
+		sprintf(candleString, "%i: %f, %f", index, candleData[zoomIndex].candles[index].open, ToPixelY(scaleData, candleData[zoomIndex].candles[index].open, logScale) - cameraPosY);
+		DrawText(candleString, 0, 40, 20, RAYWHITE);
 
 		sprintf(candleString, "%i, %i", (int)cameraPosX, (int)cameraPosY);
-		DrawText(candleString, 0, 80, 20, RAYWHITE);
+		DrawText(candleString, 0, 60, 20, RAYWHITE);
 
 		sprintf(candleString, "%f", scaleData.zoom);
-		DrawText(candleString, 0, 100, 20, RAYWHITE);
+		DrawText(candleString, 0, 800, 20, RAYWHITE);
         EndDrawing();
     }
 

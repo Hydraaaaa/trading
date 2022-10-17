@@ -11,9 +11,9 @@ typedef struct ScaleData
 	float zoom;
 } ScaleData;
 
-float ToScreenX(ScaleData scaleData, int timestamp);
+float ToPixelX(ScaleData scaleData, int timestamp);
 float ToTimestamp(ScaleData scaleData, float screenX);
-float ToScreenY(ScaleData scaleData, float price, bool log);
+float ToPixelY(ScaleData scaleData, float price, bool log);
 float ToPrice(ScaleData scaleData, float screenY, bool log);
 
 #endif

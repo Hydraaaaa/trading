@@ -3,7 +3,7 @@
 
 #include "scale.h"
 
-float ToScreenX(ScaleData scaleData, int timestamp)
+float ToPixelX(ScaleData scaleData, int timestamp)
 {
 	return timestamp / (scaleData.horizontalScale * scaleData.zoom);
 }
@@ -13,7 +13,7 @@ float ToTimestamp(ScaleData scaleData, float screenX)
 	return screenX * (scaleData.horizontalScale * scaleData.zoom);
 }
 
-float ToScreenY(ScaleData scaleData, float price, bool log)
+float ToPixelY(ScaleData scaleData, float price, bool log)
 {
 	if (log)
 	{
@@ -29,7 +29,7 @@ float ToPrice(ScaleData scaleData, float screenY, bool log)
 {
 	if (log)
 	{
-		return -pow(10, (screenY * (scaleData.verticalScale * scaleData.zoom)));
+		return pow(10, -(screenY * (scaleData.verticalScale * scaleData.zoom)));
 	}
 	else
 	{
