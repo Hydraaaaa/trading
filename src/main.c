@@ -20,11 +20,17 @@ int main()
 	LoadCandleData(&candleData[3], "4h");
 	LoadCandleData(&candleData[4], "1h");
 
+	CreateCloseLevels(&candleData[0], PURPLE);
+	CreateCloseLevels(&candleData[1], YELLOW);
+	CreateCloseLevels(&candleData[2], BLUE);
+	CreateCloseLevels(&candleData[3], ORANGE);
+
 	int zoomIndex = 2;
 	int zoomLevel = 0;
 	float verticalZoomLevel = 0;
 
 	bool logScale = true;
+	bool showInvalidatedLevels = false;
 
 	ScaleData scaleData;
 
@@ -93,7 +99,8 @@ int main()
 	bool dragging = false;
 	bool rightDragging = false;
 
-    // Main Loop
+	// Main Loop <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
     while (!WindowShouldClose())
     {
 		// Camera Panning
@@ -271,6 +278,43 @@ int main()
 		float cameraTimestamp = ToTimestamp(scaleData, cameraPosX);
 		float cameraEndTimestamp = ToTimestamp(scaleData, cameraPosX + SCREEN_WIDTH);
 
+		// Draw Candle Close Levels
+		for (int i = 0; i < zoomIndex; i++)
+		{
+			CandleData* data = &candleData[i];
+
+			for (int j = 0; j < data->closeLevelCount; j++)
+			{
+				int pixelY = ToPixelY(scaleData, data->closeLevels[j].price, logScale) - cameraPosY;
+
+				if (data->closeLevels[j].endTimestamp != -1)
+				{
+					if (showInvalidatedLevels)
+					{
+						DrawLine
+						(
+							ToPixelX(scaleData, data->closeLevels[j].startTimestamp) - cameraPosX,
+							pixelY,
+							ToPixelX(scaleData, data->closeLevels[j].endTimestamp) - cameraPosX,
+							pixelY,
+							data->closeLevelColor
+						);
+					}
+				}
+				else
+				{
+					DrawLine
+					(
+						ToPixelX(scaleData, data->closeLevels[j].startTimestamp) - cameraPosX,
+						pixelY,
+						SCREEN_WIDTH,
+						pixelY,
+						data->closeLevelColor
+					);
+				}
+			}
+		}
+
 		// Draw Candles
 		for (int i = 0; i < candleData[zoomIndex].candleCount; i++)
 		{
@@ -356,6 +400,17 @@ int main()
 		DrawText(candleString, 0, 800, 20, RAYWHITE);
         EndDrawing();
     }
+
+	DestroyCloseLevels(&candleData[0]);
+	DestroyCloseLevels(&candleData[1]);
+	DestroyCloseLevels(&candleData[2]);
+	DestroyCloseLevels(&candleData[3]);
+
+	UnloadCandleData(&candleData[0]);
+	UnloadCandleData(&candleData[1]);
+	UnloadCandleData(&candleData[2]);
+	UnloadCandleData(&candleData[3]);
+	UnloadCandleData(&candleData[4]);
 
     CloseWindow();
 }

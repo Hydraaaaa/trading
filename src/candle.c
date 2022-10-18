@@ -27,6 +27,7 @@ void LoadCandleData(CandleData* candleData, char* fileName)
 
 	candleData->candles = malloc(sizeof(Candle) * candleCount);
 	candleData->candleCount = candleCount;
+	candleData->closeLevelCount = 0;
 
 	rewind(file);
 
@@ -79,6 +80,85 @@ void LoadCandleData(CandleData* candleData, char* fileName)
 
 		currentIndex++;
 	}
+}
+
+void CreateCloseLevels(CandleData* candleData, Color color)
+{
+	candleData->closeLevelColor = color;
+
+	candleData->closeLevels = malloc(sizeof(CandleCloseLevel) * candleData->candleCount);
+
+	candleData->closeLevelCount = 0;
+
+	for (int i = 0; i < candleData->candleCount - 1; i++)
+	{
+		Candle* candle = &candleData->candles[i];
+		Candle* nextCandle = &candleData->candles[i + 1];
+
+		CandleCloseLevel* closeLevel = &candleData->closeLevels[candleData->closeLevelCount];
+
+		// If red candle
+		if (candle->close <= candle->open)
+		{
+			if (nextCandle->close > nextCandle->open)
+			{
+				closeLevel->startTimestamp = nextCandle->timestamp + nextCandle->scale;
+				closeLevel->endTimestamp = -1; // -1 meaning the level is still active
+				closeLevel->price = candle->close;
+
+				// Find end point for level
+				for (int j = i + 2; j < candleData->candleCount - 1; j++)
+				{
+					Candle* candle2 = &candleData->candles[j];
+
+					if (candle2->close < candle->close)
+					{
+						closeLevel->endTimestamp = candle2->timestamp + candle2->scale;
+						break;
+					}
+				}
+
+				if (closeLevel->startTimestamp != closeLevel->endTimestamp)
+				{
+					candleData->closeLevelCount++;
+				}
+			}
+		}
+		else
+		{
+			// If green candle
+			if (nextCandle->close < nextCandle->open)
+			{
+				closeLevel->startTimestamp = nextCandle->timestamp + nextCandle->scale;
+				closeLevel->endTimestamp = -1; // -1 meaning the level is still active
+				closeLevel->price = candle->close;
+
+				// Find end point for level
+				for (int j = i + 2; j < candleData->candleCount - 1; j++)
+				{
+					Candle* candle2 = &candleData->candles[j];
+
+					if (candle2->close > candle->close)
+					{
+						closeLevel->endTimestamp = candle2->timestamp;
+						break;
+					}
+				}
+
+				if (closeLevel->startTimestamp != closeLevel->endTimestamp)
+				{
+					candleData->closeLevelCount++;
+				}
+			}
+		}
+	}
+
+	printf("Close Level Count: %i\n", candleData->closeLevelCount);
+}
+
+void DestroyCloseLevels(CandleData* candleData)
+{
+	free(candleData->closeLevels);
 }
 
 void UnloadCandleData(CandleData* candleData)

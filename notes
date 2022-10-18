@@ -1,5 +1,1 @@
-Fix the starting position
-Fix camera positioning when adjusting scale
-Fix camera scaling when adjusting scale, Sample two screen positions 25% and 75% vertically and adjust such that prices at those points are equivalent post switch
-
-Add Monthly/Weekly/Daily/4Hourly horizontal rays
+Candle close levels are too noisy as is, need some way to cull less significant ones
